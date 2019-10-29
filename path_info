@@ -1,0 +1,125 @@
+#! /usr/bin/python3
+
+import cgi
+import os
+import json
+import passwords
+import MySQLdb
+
+form = cgi.FieldStorage()
+passwords = passwords.Passwords()
+
+conn = MySQLdb.connect(host = passwords.SQL_HOST,
+        user = passwords.SQL_USER,
+        passwd = passwords.SQL_PASSWD,
+        db = "aaron_hudgins")
+
+cursor = conn.cursor()
+cursor.execute("SELECT id, firstName, lastName, age FROM fun")
+results = cursor.fetchall()
+
+something = [1,2,3,4,5,6,7]
+new_results = []
+for result in results:
+	i = 0
+	new_result = []
+
+	for thing in result:
+		if(i == 0):
+			thing = "id: " + str(thing)
+			new_result.append(thing)
+		
+		elif(i == 1):
+			thing = "first name: " + str(thing)
+			new_result.append(thing)
+	
+		elif(i == 2):  
+			thing = "last name: " + str(thing)
+			new_result.append(thing)
+
+		elif(i == 3):                                                                                                          
+			thing = "age: " + str(thing)
+			new_result.append(thing)
+		i+=1
+	new_results.append(new_result)
+			
+something_json = json.dumps(something, indent=2)
+results_json = json.dumps(new_results, indent = 2)
+html = True
+
+
+if('PATH_INFO' in os.environ and ("first" in form) == False):	
+	info = os.environ['PATH_INFO']
+	
+	if("/json" in info or "/students" in info):
+		html = False
+		print("Content-Type: application/json")
+	
+	elif("/new_student" in info):
+		print()
+
+	else:
+		print("Content-Type: text/html")
+	print()
+
+elif("first" in form and "last" in form and "age" in form):
+	first = form["first"].value
+	first = "\'" + first + "\'"
+	last = form["last"].value
+	last = "\'" + last + "\'"
+	age = form["age"].value
+	age = "\'" + age + "\'"
+	cursor.execute("INSERT INTO fun (firstName, lastName, age) VALUES "
+			"(" + first + ", " + last + ", " + age + ");")
+	conn.commit()
+	new_id = cursor.lastrowid
+	cursor.close()     
+	print("Status: 302 Redirect")
+	print("Location: /cgi-bin/path_info/students/" + str(new_id))
+	print()
+else:
+	print("Status: 302 Redirect")
+	print("Location: /cgi-bin/path_info/")
+	print()
+
+if(html):
+	print("<html>")
+
+	print("<head>"
+		"<title>PATH_INFO</title>"
+		"</head>")
+
+	print("<body>")
+
+if(info == "/magic"):
+	print("<b>Welome to the magic pagic, nothing special actually happens here</b>.")
+
+elif(info == "/json"):
+	print(something_json)
+
+elif("/students" in info):
+	if(info != "/students"):
+		num = int(info[10:])
+		results_json = json.dumps(new_results[num - 1], indent = 2)
+
+	print(results_json)
+
+elif("/new_student" in info):
+	print('<form action="New student/" method="POST">'
+  		'<p>First name:'
+		'<br><input type="text" name="first">'
+		'</p>'
+		'<p>Lat name:'
+		'<br><input type="text" name="last">'
+		'</p><p>Age:'
+		'<br><input type="text" name="age">'
+		'<input type="submit">'
+		'</p></form>')
+
+else:
+	print("<b>This page is the not magic.</b>")	
+
+if(html):
+	print("</body.")
+	print("</html>")
+cursor.close()
